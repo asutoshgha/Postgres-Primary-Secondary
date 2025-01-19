@@ -1,0 +1,63 @@
+
+services:
+  postgres-primary:
+    image: bitnami/postgresql:latest
+    container_name: postgres-primary
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_USERNAME=admin
+      - POSTGRESQL_PASSWORD=admin123
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_DATABASE=mydb
+      - POSTGRESQL_MAX_CONNECTIONS=300
+      - POSTGRESQL_CONF_FILE=/custom-config/postgresql.conf
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_primary_data:/bitnami/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d mydb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - postgres-network
+
+  postgres-secondary:
+    image: bitnami/postgresql:latest
+    container_name: postgres-secondary
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=postgres-primary
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_USERNAME=admin
+      - POSTGRESQL_PASSWORD=admin123
+      - POSTGRESQL_DATABASE=mydb
+      - POSTGRESQL_MAX_CONNECTIONS=300
+      - POSTGRESQL_CONF_FILE=/custom-config/postgresql.conf
+    ports:
+      - "5433:5432"
+    depends_on:
+      - postgres-primary
+    volumes:
+      - postgres_secondary_data:/bitnami/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d mydb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - postgres-network
+
+volumes:
+  postgres_primary_data:
+    driver: local
+  postgres_secondary_data:
+    driver: local
+
+networks:
+  postgres-network:
+    driver: bridge
